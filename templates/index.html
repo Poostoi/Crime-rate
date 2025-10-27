@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Анализ данных{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Система анализа данных о преступности</h1>
+    </div>
+</div>
+
+<!-- Форма загрузки файла -->
+<div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Загрузка Excel файла</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main.upload_file') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Выберите Excel файл (.xlsx)</label>
+                        <input type="file" class="form-control" id="file" name="file"
+                               accept=".xlsx" required>
+                        <div class="form-text">
+                            Поддерживаемые форматы: FULL (data.xlsx) - данные с районами по годам
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Загрузить файл
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Карточка навигации: Данные -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="mb-3">Просмотр данных</h3>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6 offset-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-table text-primary" viewBox="0 0 16 16">
+                        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z"/>
+                    </svg>
+                </div>
+                <h5 class="card-title">Данные документов</h5>
+                <p class="card-text text-muted">Просмотр загруженных данных в табличном виде с разбивкой по годам</p>
+                <a href="{{ url_for('data.documents') }}" class="btn btn-primary">
+                    Перейти к данным
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

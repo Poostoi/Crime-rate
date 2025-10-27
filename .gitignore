@@ -7,7 +7,7 @@
 
 # Claude Code
 .claude/
-
+CLAUDE.md
 # Python
 __pycache__/
 *.py[cod]
@@ -43,6 +43,11 @@ htmlcov/
 # Environment variables
 .env
 .env.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # OS files
 .DS_Store
