@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Управление населением{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Управление данными о населении</h1>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted">Введите данные о населении для каждого района по годам. Нажмите на ячейку для редактирования.</p>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Район</th>
+                        {% for year in years %}
+                        <th class="text-center">{{ year.year }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for district in districts %}
+                    <tr>
+                        <td class="fw-bold">{{ district.name }}</td>
+                        {% for year in years %}
+                        <td class="text-center population-cell"
+                            data-district-id="{{ district.id }}"
+                            data-year-id="{{ year.id }}"
+                            data-district-name="{{ district.name }}"
+                            data-year-value="{{ year.year }}">
+                            {% set key = (district.id, year.id) %}
+                            {% if key in population_data %}
+                                <span class="population-value">{{ population_data[key] }}</span>
+                            {% else %}
+                                <span class="population-value text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактирование населения</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Район:</strong> <span id="modal-district"></span></p>
+                <p><strong>Год:</strong> <span id="modal-year"></span></p>
+                <div class="mb-3">
+                    <label for="population-input" class="form-label">Население:</label>
+                    <input type="number" class="form-control" id="population-input" min="0" step="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="delete-btn">Удалить</button>
+                <button type="button" class="btn btn-primary" id="save-btn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentDistrictId = null;
+let currentYearId = null;
+let currentCell = null;
+let modal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    modal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    document.querySelectorAll('.population-cell').forEach(cell => {
+        cell.style.cursor = 'pointer';
+        cell.addEventListener('click', function() {
+            currentCell = this;
+            currentDistrictId = this.dataset.districtId;
+            currentYearId = this.dataset.yearId;
+
+            const districtName = this.dataset.districtName;
+            const yearValue = this.dataset.yearValue;
+            const currentValue = this.querySelector('.population-value').textContent.trim();
+
+            document.getElementById('modal-district').textContent = districtName;
+            document.getElementById('modal-year').textContent = yearValue;
+            document.getElementById('population-input').value = currentValue === '-' ? '' : currentValue;
+
+            const deleteBtn = document.getElementById('delete-btn');
+            deleteBtn.style.display = currentValue !== '-' ? 'inline-block' : 'none';
+
+            modal.show();
+        });
+    });
+
+    document.getElementById('save-btn').addEventListener('click', savePopulation);
+    document.getElementById('delete-btn').addEventListener('click', deletePopulation);
+});
+
+function savePopulation() {
+    const value = document.getElementById('population-input').value;
+
+    if (!value) {
+        alert('Введите значение населения');
+        return;
+    }
+
+    fetch('/api/population/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            district_id: currentDistrictId,
+            year_id: currentYearId,
+            value: parseInt(value)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentCell.querySelector('.population-value').textContent = value;
+            currentCell.querySelector('.population-value').classList.remove('text-muted');
+            modal.hide();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при сохранении: ' + error);
+    });
+}
+
+function deletePopulation() {
+    if (!confirm('Удалить данные о населении?')) {
+        return;
+    }
+
+    fetch('/api/population/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            district_id: currentDistrictId,
+            year_id: currentYearId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentCell.querySelector('.population-value').textContent = '-';
+            currentCell.querySelector('.population-value').classList.add('text-muted');
+            modal.hide();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при удалении: ' + error);
+    });
+}
+</script>
+{% endblock %}

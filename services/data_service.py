@@ -2,7 +2,7 @@ import pandas as pd
 from decimal import Decimal
 from pony.orm import db_session, commit
 from typing import Dict, Optional
-from models.entities import Feature, District, Year, FeatureDistrictYear, Document
+from models.entities import Feature, District, Year, FeatureDistrictYear, Document, FinancialExpenses
 from models.excel_enum import ExcelFileType
 from repositories import (
     FeatureRepository,
@@ -61,18 +61,31 @@ class DataService:
 
             year_obj = DataService._process_year(year_value, stats)
             df = pd.read_excel(file_path, sheet_name=sheet_name)
+
+            feature_column = DataService._find_feature_column(df)
+            if not feature_column:
+                print(f"Пропущен лист '{sheet_name}' - не найдена колонка с признаками")
+                continue
+
             districts = DataService._process_districts(df, stats)
-            district_columns = list(districts.keys())
 
             for _, row in df.iterrows():
-                feature_name = row['Unnamed: 1']
-                feature = DataService._process_feature(feature_name, stats)
+                feature_name = row[feature_column]
+                if pd.isna(feature_name) or str(feature_name).strip() == '':
+                    continue
 
-                for district_name in district_columns:
-                    value = row[district_name]
+                feature_name_str = str(feature_name).strip()
+                skip_names = ['СУММА', 'НАСЕЛЕНИЕ', 'НОРМИРОВКА', 'сумма', 'население', 'нормировка']
+                if feature_name_str in skip_names:
+                    continue
+
+                feature = DataService._process_feature(feature_name_str, stats)
+
+                for col_name, district in districts.items():
+                    value = row[col_name]
                     DataService._create_feature_value(
                         feature=feature,
-                        district=districts[district_name],
+                        district=district,
                         year=year_obj,
                         value=value,
                         document=document,
@@ -94,17 +107,34 @@ class DataService:
         return year_obj
 
     @staticmethod
-    def _process_districts(df: pd.DataFrame, stats: Dict) -> Dict[str, District]:
-        """Извлечь и создать районы из DataFrame"""
-        district_columns = [col for col in df.columns if col.startswith('пункт')]
+    def _find_feature_column(df: pd.DataFrame) -> Optional[str]:
+        """Найти колонку с признаками"""
+        possible_names = ['ПОКАЗАТЕЛЬ', 'Unnamed: 1', 'показатель', 'признак']
+        for col in df.columns:
+            if col in possible_names:
+                return col
+        return None
 
+    @staticmethod
+    def _process_districts(df: pd.DataFrame, stats: Dict) -> Dict:
+        """Извлечь и создать районы из DataFrame, возвращает {col_name: District}"""
+        exclude_columns = ['ПОКАЗАТЕЛЬ', 'Unnamed: 0', 'Unnamed: 1', 'ПМР', 'Unnamed: 9', 'Unnamed: 10']
         districts = {}
-        for district_name in district_columns:
+
+        for col in df.columns:
+            if pd.isna(col):
+                continue
+            if col in exclude_columns:
+                continue
+            if isinstance(col, str) and col.startswith('Unnamed'):
+                continue
+
+            district_name = str(col)
             district = District.get(name=district_name)
             if not district:
                 district = District(name=district_name)
                 stats['districts'] += 1
-            districts[district_name] = district
+            districts[col] = district
 
         return districts
 
@@ -201,3 +231,76 @@ class DataService:
         )
 
         return pivot
+
+    @staticmethod
+    def parse_financial_expenses_from_excel(file_path: str) -> Dict[int, float]:
+        """
+        Парсит Excel файл с финансовыми расходами
+        Формат: первая колонка - показатели, остальные - годы
+        Возвращает словарь {год: сумма_по_всем_показателям}
+        """
+        df = pd.read_excel(file_path)
+
+        year_columns = []
+        for col in df.columns:
+            if col != 'ПОКАЗАТЕЛЬ' and not str(col).startswith('Unnamed'):
+                try:
+                    year_int = int(col)
+                    year_columns.append(year_int)
+                except (ValueError, TypeError):
+                    pass
+
+        if not year_columns:
+            raise ValueError("Не найдены колонки с годами")
+
+        expenses_by_year = {}
+
+        for year in year_columns:
+            total = 0.0
+            for _, row in df.iterrows():
+                value = row[year]
+                if pd.notna(value):
+                    try:
+                        total += float(value)
+                    except (ValueError, TypeError):
+                        pass
+            expenses_by_year[year] = total
+
+        return expenses_by_year
+
+    @staticmethod
+    @db_session
+    def load_financial_expenses(expenses_by_year: Dict[int, float]) -> Dict[str, int]:
+        """
+        Загружает финансовые расходы в БД
+        Принимает словарь {год: сумма}
+        """
+        stats = {
+            'districts': 0,
+            'years': 0,
+            'records': 0
+        }
+
+        pmr_district = District.get(name='ПМР')
+        if not pmr_district:
+            pmr_district = District(name='ПМР')
+            stats['districts'] += 1
+
+        for year_int, amount in expenses_by_year.items():
+            year_obj = Year.get(year=year_int)
+            if not year_obj:
+                year_obj = Year(year=year_int)
+                stats['years'] += 1
+
+            existing = FinancialExpenses.get(district=pmr_district, year=year_obj)
+            if not existing:
+                FinancialExpenses(
+                    district=pmr_district,
+                    year=year_obj,
+                    amount=amount,
+                    include_in_analysis=True
+                )
+                stats['records'] += 1
+
+        commit()
+        return stats

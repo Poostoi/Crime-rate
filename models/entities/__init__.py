@@ -6,6 +6,10 @@ from .district import District
 from .year import Year
 from .document import Document
 from .feature_district_year import FeatureDistrictYear
+from .crime_type import CrimeType
+from .population import Population
+from .crime_statistics import CrimeStatistics
+from .financial_expenses import FinancialExpenses
 
 __all__ = [
     'db',
@@ -14,4 +18,8 @@ __all__ = [
     'Year',
     'Document',
     'FeatureDistrictYear',
+    'CrimeType',
+    'Population',
+    'CrimeStatistics',
+    'FinancialExpenses',
 ]

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: crime_analysis_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-crime_analysis}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crime_analysis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: crime_analysis_web
+    environment:
+      DB_PROVIDER: postgres
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-crime_analysis}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      UPLOAD_FOLDER: files
+      MAX_CONTENT_LENGTH: 16777216
+      ALLOWED_EXTENSIONS: xlsx
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./files:/app/files
+      - ./static:/app/static
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

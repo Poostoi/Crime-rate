@@ -112,8 +112,11 @@ def clear_database():
             conn.close()
             return
 
+        cursor.execute("DROP TABLE IF EXISTS crime_statistics CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS population CASCADE")
         cursor.execute("DROP TABLE IF EXISTS feature_district_year CASCADE")
         cursor.execute("DROP TABLE IF EXISTS features CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS crime_types CASCADE")
         cursor.execute("DROP TABLE IF EXISTS districts CASCADE")
         cursor.execute("DROP TABLE IF EXISTS years CASCADE")
         cursor.execute("DROP TABLE IF EXISTS documents CASCADE")

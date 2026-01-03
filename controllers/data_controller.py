@@ -1,27 +1,45 @@
-from flask import Blueprint, render_template, request
-from repositories import DocumentRepository, FeatureDistrictYearRepository
+from flask import Blueprint, render_template
 from pony.orm import db_session, select
-from models.entities import FeatureDistrictYear, Document
+from models.entities import FeatureDistrictYear, Year, District, Feature
 
 data_bp = Blueprint('data', __name__)
 
 
 @data_bp.route('/documents')
+@db_session
 def documents():
-    """Страница просмотра данных документов"""
-    # Получить список всех документов
-    documents_list = DocumentRepository.get_all_sorted_by_date()
+    """Страница просмотра всех данных из базы"""
+    years_data = []
 
-    # Проверить, выбран ли документ
-    document_id = request.args.get('id', type=int)
-    document_data = None
+    years = list(select(y for y in Year).order_by(Year.year))
 
-    if document_id:
-        document_data = DocumentRepository.get_data_by_years(document_id)
+    for year in years:
+        districts = list(select(d for d in District).order_by(District.id))
+        features = list(select(f for f in Feature).order_by(Feature.id))
+
+        features_data = []
+        for feature in features:
+            district_values = []
+            for district in districts:
+                records = list(select(
+                    fdy for fdy in FeatureDistrictYear
+                    if fdy.year == year and fdy.district == district and fdy.feature == feature
+                ))
+                value = float(records[0].value) if records and records[0].value is not None else None
+                district_values.append(value)
+
+            features_data.append({
+                'name': feature.name,
+                'district_values': district_values
+            })
+
+        years_data.append({
+            'year': year.year,
+            'district_names': [d.name for d in districts],
+            'features': features_data
+        })
 
     return render_template(
         'documents.html',
-        documents=documents_list,
-        selected_id=document_id,
-        document_data=document_data
+        years_data=years_data
     )

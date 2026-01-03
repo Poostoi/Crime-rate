@@ -14,7 +14,7 @@
     <div class="col-lg-8 offset-lg-2">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Загрузка Excel файла</h5>
+                <h5 class="mb-0">Загрузка Excel файла с показателями</h5>
             </div>
             <div class="card-body">
                 <form action="{{ url_for('main.upload_file') }}" method="post" enctype="multipart/form-data">
@@ -27,7 +27,33 @@
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-upload"></i> Загрузить файл
+                        <i class="bi bi-upload"></i> Загрузить показатели
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Форма загрузки финансовых расходов -->
+<div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Загрузка финансовых расходов</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main.upload_financial') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file-financial" class="form-label">Выберите Excel файл (.xlsx)</label>
+                        <input type="file" class="form-control" id="file-financial" name="file"
+                               accept=".xlsx" required>
+                        <div class="form-text">
+                            Формат: первая колонка - показатели, остальные - годы (КОР2.xlsx)
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-upload"></i> Загрузить финансовые расходы
                     </button>
                 </form>
             </div>

@@ -1,0 +1,90 @@
+/* Структура страницы */
+.map-container {
+    display: flex;
+    gap: 2%;
+}
+
+#map {
+    flex: 7;
+    height: 70vh;
+}
+
+.districts-panel {
+    flex: 3;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Элементы районов */
+.district-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.district-name {
+    flex: 1;
+}
+
+.district-value {
+    padding: 0.25rem 0.75rem;
+    color: white;
+    border-radius: 0.25rem;
+    font-weight: bold;
+}
+
+/* Метки районов на карте */
+.label-text {
+    font-weight: bold;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #333;
+    text-shadow: 1px 1px 2px white, -1px -1px 2px white,
+                 1px -1px 2px white, -1px 1px 2px white;
+}
+
+/* Легенда - цвета */
+.legend-color {
+    width: 2rem;
+    height: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.legend-color-low {
+    background-color: #008000;
+}
+
+.legend-color-medium {
+    background-color: #FFFF00;
+}
+
+.legend-color-elevated {
+    background-color: #FFA500;
+}
+
+.legend-color-high {
+    background-color: #FF0000;
+}
+
+/* Утилиты */
+.hidden {
+    display: none;
+}
+
+/* Цвета для значений районов */
+.color-low {
+    background-color: #008000;
+}
+
+.color-medium {
+    background-color: #FFFF00;
+    color: #000;
+}
+
+.color-elevated {
+    background-color: #FFA500;
+}
+
+.color-high {
+    background-color: #FF0000;
+}

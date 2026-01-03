@@ -52,3 +52,38 @@ def upload_file():
     else:
         flash('Недопустимый формат файла. Разрешены только .xlsx файлы', 'danger')
         return redirect(url_for('main.index'))
+
+
+@main_bp.route('/upload_financial', methods=['POST'])
+def upload_financial():
+    """Обработка загрузки финансовых расходов"""
+    if 'file' not in request.files:
+        flash('Файл не выбран', 'danger')
+        return redirect(url_for('main.index'))
+
+    file = request.files['file']
+
+    if file.filename == '':
+        flash('Файл не выбран', 'danger')
+        return redirect(url_for('main.index'))
+
+    if file and FileService.allowed_file(file.filename):
+        filename, filepath = FileService.save_uploaded_file(file)
+
+        try:
+            expenses_by_year = DataService.parse_financial_expenses_from_excel(filepath)
+            stats = DataService.load_financial_expenses(expenses_by_year)
+            flash(
+                f'Финансовые расходы из "{filename}" загружены. '
+                f'Добавлено: {stats["districts"]} районов, '
+                f'{stats["years"]} лет, '
+                f'{stats["records"]} записей',
+                'success'
+            )
+        except Exception as e:
+            flash(f'Ошибка при обработке файла: {str(e)}', 'danger')
+
+        return redirect(url_for('main.index'))
+    else:
+        flash('Недопустимый формат файла. Разрешены только .xlsx файлы', 'danger')
+        return redirect(url_for('main.index'))

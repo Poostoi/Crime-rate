@@ -11,6 +11,9 @@ class Year(db.Entity):
     id = PrimaryKey(int, auto=True)
     year = Required(int, unique=True)
     values = Set('FeatureDistrictYear')
+    populations = Set('Population')
+    crime_statistics = Set('CrimeStatistics')
+    financial_expenses = Set('FinancialExpenses')
 
     def __repr__(self):
         return f"Year(id={self.id}, year={self.year})"

@@ -1,6 +1,10 @@
 # Excel files
 *.xlsx
 *.xls
+files/
+
+# Generated plots
+static/plots/*.png
 
 # IDE - PyCharm / IntelliJ IDEA
 .idea/

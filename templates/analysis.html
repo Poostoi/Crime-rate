@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Анализ данных - Random Forest{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Анализ данных (Random Forest)</h1>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Назад</a>
+        </div>
+    </div>
+</div>
+
+<!-- Форма выбора файла -->
+<div class="row mb-4">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Выбор файла для анализа</h5>
+            </div>
+            <div class="card-body">
+                {% if files %}
+                    <form method="GET" action="{{ url_for('analysis.analysis') }}">
+                        <div class="row g-3">
+                            <div class="col-md-9">
+                                <label for="file-select" class="form-label">Выберите Excel файл:</label>
+                                <select class="form-select" id="file-select" name="file" required>
+                                    <option value="">-- Выберите файл --</option>
+                                    {% for file in files %}
+                                        <option value="{{ file }}" {% if selected_file == file %}selected{% endif %}>
+                                            {{ file }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Запустить анализ</button>
+                            </div>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        В папке files нет Excel файлов. Загрузите файлы для анализа.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Результаты анализа -->
+{% if results %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Результаты анализа: {{ results.selected_file }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <strong>Наибольшее влияние на уровень преступности:</strong> {{ results.most_important }}
+                </div>
+
+                <p class="text-muted">
+                    Количество признаков: <strong>{{ results.n_features }}</strong> |
+                    Количество образцов: <strong>{{ results.n_samples }}</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Вкладки с графиками -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Визуализация результатов</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="plotsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active"
+                                id="importance-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#importance"
+                                type="button"
+                                role="tab">
+                            Важность факторов
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="tree-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#tree"
+                                type="button"
+                                role="tab">
+                            Дерево решений
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="table-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#table"
+                                type="button"
+                                role="tab">
+                            Таблица значимости
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-3" id="plotsTabsContent">
+                    <!-- Вкладка: График важности факторов -->
+                    <div class="tab-pane fade show active" id="importance" role="tabpanel">
+                        <h4 class="mb-3">График важности факторов</h4>
+                        <div class="text-center">
+                            <img src="{{ url_for('static', filename=results.importance_plot) }}"
+                                 class="img-fluid"
+                                 alt="Важность факторов">
+                        </div>
+                    </div>
+
+                    <!-- Вкладка: Дерево решений -->
+                    <div class="tab-pane fade" id="tree" role="tabpanel">
+                        <h4 class="mb-3">Дерево решений (первое из ансамбля)</h4>
+                        <div class="text-center">
+                            <img src="{{ url_for('static', filename=results.tree_plot) }}"
+                                 class="img-fluid"
+                                 alt="Дерево решений"
+                                 style="max-width: 100%; height: auto;">
+                        </div>
+                    </div>
+
+                    <!-- Вкладка: Таблица -->
+                    <div class="tab-pane fade" id="table" role="tabpanel">
+                        <h4 class="mb-3">Таблица значимости факторов</h4>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-bordered">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th class="text-center">#</th>
+                                        <th>Показатель</th>
+                                        <th class="text-center">Важность</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in results.importance_data %}
+                                    <tr>
+                                        <td class="text-center">{{ loop.index }}</td>
+                                        <td>{{ item['Показатель'] }}</td>
+                                        <td class="text-center">{{ item['Важность'] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
