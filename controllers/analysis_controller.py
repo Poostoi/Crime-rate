@@ -9,6 +9,10 @@ analysis_bp = Blueprint('analysis', __name__)
 def analysis():
     """Страница анализа данных"""
     crime_types = CrimeLineAnalysisService.get_all_crime_types()
+
+    if request.args.get('new'):
+        return render_template('analysis.html', crime_types=crime_types, step=1)
+
     latest_result = AnalysisService.get_latest_result_any()
 
     if latest_result:
