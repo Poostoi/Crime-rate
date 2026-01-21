@@ -12,60 +12,118 @@
     </div>
 </div>
 
-<!-- Форма выбора файла -->
+{% set current_step = step|default(1) %}
+
+<!-- Шаг 1: Выбор линии преступлений -->
+{% if current_step == 1 %}
 <div class="row mb-4">
     <div class="col-lg-8 offset-lg-2">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Выбор файла для анализа</h5>
+                <h5 class="mb-0">Шаг 1: Выбор линии преступлений</h5>
             </div>
             <div class="card-body">
-                {% if files %}
-                    <form method="GET" action="{{ url_for('analysis.analysis') }}">
-                        <div class="row g-3">
-                            <div class="col-md-9">
-                                <label for="file-select" class="form-label">Выберите Excel файл:</label>
-                                <select class="form-select" id="file-select" name="file" required>
-                                    <option value="">-- Выберите файл --</option>
-                                    {% for file in files %}
-                                        <option value="{{ file }}" {% if selected_file == file %}selected{% endif %}>
-                                            {{ file }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
+                {% if crime_types %}
+                    <form method="POST" action="{{ url_for('analysis.select_indicators') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Выберите линию преступлений для анализа:</label>
+                            {% for crime_type in crime_types %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="crime_type_id"
+                                       id="crime_type_{{ crime_type.id }}" value="{{ crime_type.id }}" required>
+                                <label class="form-check-label" for="crime_type_{{ crime_type.id }}">
+                                    {{ crime_type.name }}
+                                </label>
                             </div>
-                            <div class="col-md-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">Запустить анализ</button>
-                            </div>
+                            {% endfor %}
                         </div>
+                        <button type="submit" class="btn btn-primary">Далее</button>
                     </form>
                 {% else %}
                     <div class="alert alert-info mb-0">
-                        В папке files нет Excel файлов. Загрузите файлы для анализа.
+                        Нет линий преступлений в базе данных. Загрузите данные для анализа.
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
-<!-- Результаты анализа -->
-{% if results %}
+<!-- Шаг 2: Выбор финансовых показателей -->
+{% if current_step == 2 %}
+<div class="row mb-4">
+    <div class="col-lg-10 offset-lg-1">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Шаг 2: Выбор финансовых показателей</h5>
+            </div>
+            <div class="card-body">
+                {% if indicators %}
+                    <form method="POST" action="{{ url_for('analysis.run_analysis') }}">
+                        <input type="hidden" name="crime_type_id" value="{{ selected_crime_type_id }}">
+
+                        <div class="mb-3">
+                            <label class="form-label">Выберите финансовые показатели для анализа:</label>
+                            <div class="row">
+                                {% for indicator in indicators %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="indicators"
+                                               id="indicator_{{ loop.index }}" value="{{ indicator.name }}"
+                                               {% if indicator.include_in_analysis %}checked{% endif %}>
+                                        <label class="form-check-label" for="indicator_{{ loop.index }}">
+                                            {{ indicator.name }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('analysis.analysis') }}" class="btn btn-secondary">Назад</a>
+                            <button type="submit" class="btn btn-success">Запустить расчет</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-warning mb-0">
+                        Нет финансовых показателей в базе данных.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Шаг 3: Результаты анализа -->
+{% if current_step == 3 and results %}
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Результаты анализа: {{ results.selected_file }}</h5>
+                <h5 class="mb-0">Результаты анализа: {{ results.crime_type_name }}</h5>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
                     <strong>Наибольшее влияние на уровень преступности:</strong> {{ results.most_important }}
                 </div>
 
+                {% if results.n_features is defined %}
                 <p class="text-muted">
                     Количество признаков: <strong>{{ results.n_features }}</strong> |
                     Количество образцов: <strong>{{ results.n_samples }}</strong>
                 </p>
+                {% endif %}
+
+                {% if results.created_at is defined %}
+                <p class="text-muted">
+                    Дата расчета: <strong>{{ results.created_at }}</strong>
+                </p>
+                {% endif %}
+
+                <a href="{{ url_for('analysis.analysis') }}" class="btn btn-primary">Новый анализ</a>
             </div>
         </div>
     </div>
@@ -165,4 +223,8 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
 {% endblock %}

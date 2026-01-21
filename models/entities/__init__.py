@@ -10,6 +10,7 @@ from .crime_type import CrimeType
 from .population import Population
 from .crime_statistics import CrimeStatistics
 from .financial_expenses import FinancialExpenses
+from .analysis_result import AnalysisResult
 
 __all__ = [
     'db',
@@ -22,4 +23,5 @@ __all__ = [
     'Population',
     'CrimeStatistics',
     'FinancialExpenses',
+    'AnalysisResult',
 ]

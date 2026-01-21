@@ -88,6 +88,25 @@ def init_from_env(create_tables: bool = True, sql_debug: bool = False):
     )
 
 
+def init_for_migrations(sql_debug: bool = False):
+    """Инициализировать БД только для выполнения миграций (без создания таблиц)"""
+    if sql_debug:
+        set_sql_debug(True)
+
+    config = settings.db_config
+    create_database_if_not_exists(config)
+
+    db.bind(
+        provider='postgres',
+        user=config['user'],
+        password=config['password'],
+        host=config['host'],
+        port=config['port'],
+        database=config['database']
+    )
+    print(f"✓ База данных подключена для миграций: {config['database']}")
+
+
 def clear_database():
     """Удалить все таблицы (УДАЛЯЕТ ВСЕ ДАННЫЕ И СТРУКТУРУ!)"""
     try:

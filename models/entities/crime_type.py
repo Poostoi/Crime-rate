@@ -11,6 +11,7 @@ class CrimeType(db.Entity):
     id = PrimaryKey(int, auto=True)
     name = Required(str, 200, unique=True)
     features = Set('Feature')
+    analysis_results = Set('AnalysisResult')
 
     def __repr__(self):
         return f"CrimeType(id={self.id}, name='{self.name}')"

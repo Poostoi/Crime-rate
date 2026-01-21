@@ -12,10 +12,11 @@ class FinancialExpenses(db.Entity):
     district = Required('District')
     year = Required('Year')
     amount = Required(float)
+    name = Required(str)
     include_in_analysis = Required(bool, default=True)
 
-    composite_key(district, year)
+    composite_key(district, year, name)
 
     def __repr__(self):
         return (f"FinancialExpenses(district='{self.district.name}', "
-                f"year={self.year.year}, amount={self.amount})")
+                f"year={self.year.year}, name='{self.name}', amount={self.amount})")

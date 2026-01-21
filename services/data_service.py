@@ -1,8 +1,9 @@
 import pandas as pd
+import re
 from decimal import Decimal
 from pony.orm import db_session, commit
-from typing import Dict, Optional
-from models.entities import Feature, District, Year, FeatureDistrictYear, Document, FinancialExpenses
+from typing import Dict, Optional, Tuple
+from models.entities import Feature, District, Year, FeatureDistrictYear, Document, FinancialExpenses, CrimeType
 from models.excel_enum import ExcelFileType
 from repositories import (
     FeatureRepository,
@@ -139,12 +140,40 @@ class DataService:
         return districts
 
     @staticmethod
+    def _parse_feature_name(full_name: str) -> Tuple[Optional[str], str]:
+        """
+        Парсит название признака
+        Формат: "Линия преступлений (Признак)" или "Признак"
+
+        Returns: (crime_type_name, feature_name)
+        """
+        match = re.match(r'^(.+?)\s*\((.+?)\)\s*$', full_name.strip())
+        if match:
+            crime_type_name = match.group(1).strip()
+            feature_name = match.group(2).strip()
+            return (crime_type_name, feature_name)
+        else:
+            return (None, full_name.strip())
+
+    @staticmethod
     def _process_feature(feature_name: str, stats: Dict) -> Feature:
-        """Создать или получить признак из БД"""
-        feature = Feature.get(name=feature_name)
+        """Создать или получить признак из БД с определением линии преступлений"""
+        crime_type_name, parsed_feature_name = DataService._parse_feature_name(feature_name)
+
+        crime_type = None
+        if crime_type_name:
+            crime_type = CrimeType.get(name=crime_type_name)
+            if not crime_type:
+                crime_type = CrimeType(name=crime_type_name)
+                print(f"  + Создана линия преступлений: {crime_type_name}")
+
+        feature = Feature.get(name=parsed_feature_name)
         if not feature:
-            feature = Feature(name=feature_name)
+            feature = Feature(name=parsed_feature_name, crime_type=crime_type)
             stats['features'] += 1
+        elif crime_type and not feature.crime_type:
+            feature.crime_type = crime_type
+
         return feature
 
     @staticmethod
@@ -233,11 +262,11 @@ class DataService:
         return pivot
 
     @staticmethod
-    def parse_financial_expenses_from_excel(file_path: str) -> Dict[int, float]:
+    def parse_financial_expenses_from_excel(file_path: str) -> list:
         """
         Парсит Excel файл с финансовыми расходами
         Формат: первая колонка - показатели, остальные - годы
-        Возвращает словарь {год: сумма_по_всем_показателям}
+        Возвращает список словарей [{name: str, year: int, amount: float}, ...]
         """
         df = pd.read_excel(file_path)
 
@@ -253,27 +282,36 @@ class DataService:
         if not year_columns:
             raise ValueError("Не найдены колонки с годами")
 
-        expenses_by_year = {}
+        expenses = []
 
-        for year in year_columns:
-            total = 0.0
-            for _, row in df.iterrows():
+        for _, row in df.iterrows():
+            indicator_name = row.get('ПОКАЗАТЕЛЬ')
+            if pd.isna(indicator_name) or str(indicator_name).strip() == '':
+                continue
+
+            indicator_name = str(indicator_name).strip()
+
+            for year in year_columns:
                 value = row[year]
                 if pd.notna(value):
                     try:
-                        total += float(value)
+                        amount = float(value)
+                        expenses.append({
+                            'name': indicator_name,
+                            'year': year,
+                            'amount': amount
+                        })
                     except (ValueError, TypeError):
                         pass
-            expenses_by_year[year] = total
 
-        return expenses_by_year
+        return expenses
 
     @staticmethod
     @db_session
-    def load_financial_expenses(expenses_by_year: Dict[int, float]) -> Dict[str, int]:
+    def load_financial_expenses(expenses: list) -> Dict[str, int]:
         """
         Загружает финансовые расходы в БД
-        Принимает словарь {год: сумма}
+        Принимает список словарей [{name: str, year: int, amount: float}, ...]
         """
         stats = {
             'districts': 0,
@@ -286,21 +324,61 @@ class DataService:
             pmr_district = District(name='ПМР')
             stats['districts'] += 1
 
-        for year_int, amount in expenses_by_year.items():
-            year_obj = Year.get(year=year_int)
+        for expense in expenses:
+            year_obj = Year.get(year=expense['year'])
             if not year_obj:
-                year_obj = Year(year=year_int)
+                year_obj = Year(year=expense['year'])
                 stats['years'] += 1
 
-            existing = FinancialExpenses.get(district=pmr_district, year=year_obj)
+            existing = FinancialExpenses.get(
+                district=pmr_district,
+                year=year_obj,
+                name=expense['name']
+            )
             if not existing:
                 FinancialExpenses(
                     district=pmr_district,
                     year=year_obj,
-                    amount=amount,
+                    name=expense['name'],
+                    amount=expense['amount'],
                     include_in_analysis=True
                 )
                 stats['records'] += 1
+
+        commit()
+        return stats
+
+    @staticmethod
+    @db_session
+    def update_existing_features_with_crime_types() -> Dict[str, int]:
+        """
+        Обновить существующие признаки, добавив к ним линии преступлений
+        Используется для обновления уже загруженных данных
+        """
+        stats = {
+            'updated': 0,
+            'crime_types_created': 0
+        }
+
+        features = list(Feature.select())
+        crime_types_cache = {}
+
+        for feature in features:
+            crime_type_name, parsed_feature_name = DataService._parse_feature_name(feature.name)
+
+            if crime_type_name:
+                if crime_type_name not in crime_types_cache:
+                    crime_type = CrimeType.get(name=crime_type_name)
+                    if not crime_type:
+                        crime_type = CrimeType(name=crime_type_name)
+                        stats['crime_types_created'] += 1
+                    crime_types_cache[crime_type_name] = crime_type
+                else:
+                    crime_type = crime_types_cache[crime_type_name]
+
+                if not feature.crime_type:
+                    feature.crime_type = crime_type
+                    stats['updated'] += 1
 
         commit()
         return stats

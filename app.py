@@ -2,10 +2,12 @@ from flask import Flask
 import utils.db as db
 from settings import settings
 from controllers import main_bp, data_bp, analysis_bp, map_bp, population_bp
+from utils.migrations import MigrationManager
 
 app = Flask(__name__)
 app.config.update(settings.flask_config)
 # db.clear_database()
+MigrationManager.run_all_migrations()
 db.init_from_env()
 
 app.register_blueprint(main_bp)
