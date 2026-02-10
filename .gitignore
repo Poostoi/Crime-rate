@@ -2,6 +2,7 @@
 *.xlsx
 *.xls
 files/
+dump.sql
 
 # Generated plots
 static/plots/*.png
