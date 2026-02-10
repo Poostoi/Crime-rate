@@ -7,8 +7,8 @@ from utils.migrations import MigrationManager
 app = Flask(__name__)
 app.config.update(settings.flask_config)
 # db.clear_database()
-MigrationManager.run_all_migrations()
 db.init_from_env()
+MigrationManager.run_all_migrations()
 
 app.register_blueprint(main_bp)
 app.register_blueprint(data_bp)

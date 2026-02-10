@@ -19,6 +19,20 @@ class MigrationManager:
         )
 
     @staticmethod
+    def check_table_exists(table_name: str) -> bool:
+        """Проверить существование таблицы"""
+        conn = MigrationManager._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = %s)",
+            [table_name]
+        )
+        result = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        return result
+
+    @staticmethod
     def check_column_exists(table_name: str, column_name: str) -> bool:
         """Проверить существование колонки в таблице"""
         conn = MigrationManager._get_connection()
@@ -123,6 +137,10 @@ class MigrationManager:
     def migrate_financial_expenses():
         """Миграция для добавления колонки name в financial_expenses"""
         print('\n=== Миграция: добавление колонки name в financial_expenses ===')
+
+        if not MigrationManager.check_table_exists('financial_expenses'):
+            print('✓ Таблица financial_expenses ещё не создана, миграция пропущена\n')
+            return
 
         if not MigrationManager.check_column_exists('financial_expenses', 'name'):
             print('Колонка name не найдена, начинаю миграцию...')

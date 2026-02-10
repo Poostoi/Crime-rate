@@ -38,7 +38,8 @@ services:
       - ./files:/app/files
       - ./static:/app/static
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
